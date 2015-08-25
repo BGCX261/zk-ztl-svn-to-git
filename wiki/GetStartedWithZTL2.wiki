@@ -1,0 +1,181 @@
+#summary Get started with the ZTL auto-testing.
+#sidebar SideNav
+
+<wiki:toc max_depth="2" />
+
+= Prerequisites =
+ # You will need the Java SDK version 1.6 or later. If necessary,  please [http://java.sun.com/javase/downloads/index.jsp download and install the Java SE Development Kit (JDK)] for your platform.
+ # Apache Ant is also necessary to run command line arguments. If you don't already have it, install [http://ant.apache.org/ Apache Ant].
+ # If you use ZK Selector in your ZTL test case, ZK 5.0.2 or later is required.
+
+= How to run the ZTL test cases =
+== Download the released package ==
+You need to download ZTL released package from [http://code.google.com/p/zk-ztl/downloads/list here].
+And extract it to a folder, you should now be able to see the following folders and files:
+ * *dist/*
+  * *testsample.zip* the samples of ztl test cases.
+  * *testweb.war* the test application for the samples of ztl test cases (or you can use it for your own test cases).
+  * *lib/*
+   * *ztl-2.0.0-RC.jar* the ztl run-time library.
+   * *ztl-2.0.0-RC-javadoc.jar* the javadoc of ztl.
+ * *doc/*
+  * *LICENSE* the license file (Apache License Version 2.0)
+
+Also, you need to extract testsample.zip to perform the test case samples, the package includes:
+ * *codegen/* the java source folder for ZTL generated code.
+ * *imgdest/* place the result images for vision testing.
+ * *imgsrc/* the folder of image samples for vision testing.
+ * *lib/* the libraries required for ztl test cases.
+ * *src/* the directory of the ZTL testing file (include some test case samples.)
+ * *.classpath* the classes path configuration for Eclipse IDE.
+ * *.project* the project configuration for Eclipse IDE (It's mean you can directly import this java project into Eclipse IDE.)
+ * *build.prop.xml* the properties file for build.xml.
+ * *build.xml* the Ant build file for running ztl test case conveniently. 
+ * *config.properties* the ztl configuration file.
+ * *junit-frames.xsl* the stylesheet file for test report transformation.
+ * *ztl.ignore* the setting for ignore specific browser when testing, see the usage description in this file.
+
+== Prepare Test Application ==
+In order to run ZTL test case, we need a server to run ZK test application (at least for rendering zul from ztl).
+
+*Note:* Everything you need in server-side (such as composer, resources and so on) must put into the test application. 
+
+=== Use testweb.war for test application ===
+ZTL released package provide a *testweb.war* included the requirements for a test application. (It also includes the server-side code for test case samples.)
+
+You could deploy *testweb.war* in your web container directly.
+
+=== Manually create a test application ===
+
+1. Add Listener into zk.xml
+Add a desktop listener to zk.xml. For example,
+ {{{
+<listener>
+	<description>For Zul Testing Language</description>
+	<listener-class>org.zkoss.zktest.testweb.DesktopInit</listener-class>
+</listener>
+}}}
+2. Create the desktop listener. For example,
+ {{{
+public class DesktopInit implements org.zkoss.zk.ui.util.DesktopInit {
+	
+	public void init(final Desktop desktop, Object request) throws Exception {
+		desktop.addListener(new AuService() {
+
+			public boolean service(AuRequest request, boolean everError) {
+				final String cmd = request.getCommand();
+				if (cmd.equals("onZTLService")) {
+					String zscript = (String) request.getData().get("");
+					Component cmp = Executions.createComponentsDirectly(
+							zscript, "zul", null, null);
+					if (cmp != null)
+						cmp.setPage((Page) desktop.getPages().iterator().next());
+					return true;
+				} else return false;
+			}
+		});
+	}
+
+}
+}}} 
+
+3. Create a empty *ztl.zul* into web context path in test application. For example,
+ {{{
+<?xml version="1.0" encoding="UTF-8"?>
+<?page title="ZTL TEST"?>
+<zk></zk>
+}}} 
+
+=== Start Test Application ===
+Start test application.
+ * Deploy your test application in your web server.
+ * Run your web server.
+
+== Configure ZTL Setting ==
+Configure your server settings under *config.properties*
+|| *Name* || *Description* || * Overridden in ZTL file*||
+|| server || the URL of the test application, like *http://localhost:8080 * || yes ||
+|| context-path || the name of the context path, like */testweb* || yes ||
+|| delay || the delay time of each command run by Selenium|| yes ||
+|| action || by default, the "ztl.zul" is assumed || yes ||
+|| timeout || the timeout of the waiting response from test application, in millisecond|| yes ||
+|| browser || each test case should be tested with all browser types, by default "all" is assumed|| yes ||
+|| all || describes how many browser type should be tested|| no ||
+
+ * *Note*: *Overridden in ZTL file* means the property can be overridden in each ZTL file, if necessary.
+
+== Run Test Case and Report==
+You can use [http://ant.apache.org/ Ant] to run the build.xml under the *ztl* folder. The Ant tasks includes:
+{{{    
+C:\ztl-2.0.0-RC\dist\testsample>ant
+Buildfile: C:\ztl-2.0.0-RC\dist\testsample\build.xml
+
+help:
+     [echo]
+     [echo] Usage:
+     [echo]     ant clean
+     [echo]             Clean the source.
+     [echo]     ant build
+     [echo]             Generate the Java class and compile them
+     [echo]     ant junit
+     [echo]             Run all of the test cases
+     [echo]     ant report
+     [echo]             Generate the report from test result
+     [echo]
+
+BUILD SUCCESSFUL
+Total time: 0 seconds
+}}}
+
+We can perform all test and generate test report by single command:
+{{{
+ant clean build junit report
+}}}
+For example:
+{{{
+Buildfile: C:\ztl-2.0.0-RC\dist\testsample\build.xml
+
+clean:
+   [delete] Deleting directory C:\ztl-2.0.0-RC\dist\testsample\target
+   [delete] Deleting directory C:\ztl-2.0.0-RC\dist\testsample\report
+
+generate:
+     [java] src=src/
+     [java] dist=codegen/
+     [java] tags=${tags}
+     [java] excludeTags=${excludetags}
+     [java] codegen//test/TagSuite.java , test case amount:0
+
+init:
+    [mkdir] Created dir: C:\ztl-2.0.0-RC\dist\testsample\report
+    [mkdir] Created dir: C:\ztl-2.0.0-RC\dist\testsample\target\classes
+
+compileztl:
+    [javac] C:\ztl-2.0.0-RC\dist\testsample\build.xml:59: warning: 'includeantruntime' was not set, defaulting to build.sysclasspath=last; set to false for repeatable builds
+    [javac] Compiling 4 source files to C:\ztl-2.0.0-RC\dist\testsample\target\classes
+
+build:
+
+junit:
+    [junit] Running org.zkoss.zktest.testsample.case1Test
+    [junit] connecting firefox
+    [junit] testing:firefox
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Time elapsed: 6.729 sec
+    [junit] Running org.zkoss.zktest.testsample.case2Test
+    [junit] connecting firefox
+    [junit] testing:firefox
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Time elapsed: 8.843 sec
+    [junit] Running org.zkoss.zktest.testsample.case3Test
+    [junit] connecting firefox
+    [junit] testing:firefox
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Time elapsed: 7.708 sec
+
+report:
+[junitreport] Processing C:\ztl-2.0.0-RC\dist\testsample\report\TESTS-TestSuites.xml to C:\Users\zk\AppData\Local\Temp\null2022762447
+[junitreport] Loading stylesheet C:\ztl-2.0.0-RC\dist\testsample\junit-frames.xsl
+[junitreport] Transform time: 450ms
+[junitreport] Deleting: C:\Users\zk\AppData\Local\Temp\null2022762447
+
+BUILD SUCCESSFUL
+Total time: 28 seconds
+}}} 
